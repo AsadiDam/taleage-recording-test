@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>TaleAge Recording Test</title>
+<style>
+  :root { --bg:#F5F6F4; --card:#FFFFFF; --ink:#1B1F1D; --ink2:#5B625E; --line:#D9DDD9; --accent:#1F5E4E; --rec:#C8372D; --ok:#2E7D4F; --warn:#9A6B00; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#121513; --card:#1C201E; --ink:#ECEFED; --ink2:#A3ABA6; --line:#2F3532; --accent:#5FB59C; --rec:#FF6B5E; --ok:#6BCB8F; --warn:#E3B341; color-scheme:dark; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.45 -apple-system, system-ui, "Segoe UI", Roboto, sans-serif; padding: 16px max(16px, env(safe-area-inset-right)) 40px max(16px, env(safe-area-inset-left)); }
+  main { max-width:640px; margin:0 auto; display:grid; gap:14px; }
+  h1 { font-size:24px; margin:4px 0 0; }
+  h2 { font-size:17px; margin:0 0 8px; }
+  p { margin:0; }
+  .muted { color:var(--ink2); font-size:14px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; display:grid; gap:10px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; }
+  button { font:inherit; font-weight:600; border-radius:12px; padding:13px 16px; border:1.5px solid var(--line); background:var(--card); color:var(--ink); cursor:pointer; min-height:48px; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  button.rec { background:var(--rec); border-color:var(--rec); color:#fff; }
+  button:disabled { opacity:.4; cursor:not-allowed; }
+  button:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+  video { width:100%; max-width:100%; border-radius:12px; background:#000; aspect-ratio: 3/4; object-fit:cover; }
+  #preview { transform:scaleX(-1); }
+  .status { font-weight:700; font-variant-numeric:tabular-nums; }
+  .pill { display:inline-block; padding:3px 10px; border-radius:99px; font-size:13px; font-weight:700; border:1.5px solid currentColor; }
+  .ok { color:var(--ok); } .bad { color:var(--rec); } .warn { color:var(--warn); }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  td { padding:6px 0; border-bottom:1px solid var(--line); vertical-align:top; overflow-wrap:anywhere; }
+  td:first-child { color:var(--ink2); width:42%; padding-right:10px; }
+  label.check { display:flex; gap:10px; align-items:flex-start; padding:6px 0; }
+  label.check input { width:22px; height:22px; margin-top:1px; flex:none; }
+  textarea { width:100%; min-height:70px; font:inherit; border-radius:10px; border:1.5px solid var(--line); background:var(--bg); color:var(--ink); padding:10px; }
+  #log { font:12px/1.5 ui-monospace, Menlo, monospace; white-space:pre-wrap; max-height:200px; overflow:auto; background:var(--bg); border-radius:10px; padding:10px; margin:0; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>TaleAge recording test</h1>
+    <p class="muted">Open this page on each phone, record a short answer, and check that it plays back. Then copy the results and send them to yourself.</p>
+  </header>
+
+  <section class="card" aria-labelledby="d-h">
+    <h2 id="d-h">1 · This device</h2>
+    <table id="device"></table>
+  </section>
+
+  <section class="card" aria-labelledby="c-h">
+    <h2 id="c-h">2 · Camera</h2>
+    <video id="preview" playsinline muted autoplay></video>
+    <p id="camStatus" class="status">Camera is off.</p>
+    <div class="row">
+      <button id="camOn" class="primary">Turn on camera and microphone</button>
+      <button id="camOff" disabled>Turn camera off</button>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="r-h">
+    <h2 id="r-h">3 · Record</h2>
+    <p id="recStatus" class="status">Not recording · 00:00</p>
+    <div class="row">
+      <button id="recStart" class="rec" disabled>● Start recording</button>
+      <button id="recPause" disabled>❚❚ Pause</button>
+      <button id="recStop" disabled>■ Done</button>
+    </div>
+    <p class="muted">Try about 1 minute first, then one long answer (about 3 minutes). Also try switching to another app while recording.</p>
+  </section>
+
+  <section class="card" aria-labelledby="p-h" id="resultCard" hidden>
+    <h2 id="p-h">4 · Play it back</h2>
+    <video id="playback" playsinline controls></video>
+    <table id="result"></table>
+    <div class="row">
+      <a id="download"><button type="button">Save the clip</button></a>
+      <button id="again">Record again</button>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="k-h">
+    <h2 id="k-h">5 · Checklist</h2>
+    <div id="checks"></div>
+    <label for="notes" class="muted">Notes (what went wrong, how it looked)</label>
+    <textarea id="notes" placeholder="e.g. iPhone 13, Safari: preview fine, playback had no sound"></textarea>
+    <div class="row">
+      <button id="copy" class="primary">Copy results</button>
+    </div>
+    <p id="copyMsg" class="muted" aria-live="polite"></p>
+  </section>
+
+  <section class="card" aria-labelledby="l-h">
+    <h2 id="l-h">Log</h2>
+    <pre id="log"></pre>
+  </section>
+</main>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const t0 = Date.now();
+  const logLines = [];
+  function log(msg) { const s = ((Date.now() - t0) / 1000).toFixed(1).padStart(6) + 's  ' + msg; logLines.push(s); $('log').textContent = logLines.join('\n'); $('log').scrollTop = 1e9; }
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const rows = (el, pairs) => { el.innerHTML = pairs.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${v}</td></tr>`).join(''); };
+  const yes = (b, okText = 'Yes', badText = 'No') => b ? `<span class="pill ok">${okText}</span>` : `<span class="pill bad">${badText}</span>`;
+
+  // ---------- device info ----------
+  const TYPES = ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm'];
+  const hasMR = typeof window.MediaRecorder !== 'undefined';
+  const supported = hasMR && MediaRecorder.isTypeSupported ? TYPES.filter(t => { try { return MediaRecorder.isTypeSupported(t); } catch (e) { return false; } }) : [];
+  const chosenType = supported[0] || '';
+  const device = {
+    browser: navigator.userAgent,
+    secure: window.isSecureContext,
+    gum: !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia),
+    mr: hasMR,
+    types: supported,
+    chosen: chosenType || '(browser default)',
+    screen: `${screen.width}×${screen.height} @${window.devicePixelRatio}x`,
+  };
+  rows($('device'), [
+    ['Browser', esc(device.browser)],
+    ['Secure page (https)', yes(device.secure, 'Yes', 'No – camera will not work')],
+    ['Camera access available', yes(device.gum)],
+    ['Recording available', yes(device.mr)],
+    ['Video formats it can record', supported.length ? esc(supported.join(', ')) : '<span class="pill warn">None reported</span>'],
+    ['Format this test uses', esc(device.chosen)],
+    ['Screen', esc(device.screen)],
+  ]);
+  log('Page loaded. Secure: ' + device.secure + ', MediaRecorder: ' + device.mr + ', type: ' + device.chosen);
+
+  // ---------- camera ----------
+  let stream = null, rec = null, chunks = [], timer = null, elapsed = 0, startedAt = 0, lastBlobUrl = null, result = null;
+  const ERR = {
+    NotAllowedError: 'Permission was refused. Allow camera and microphone in the browser settings, then try again.',
+    NotFoundError: 'No camera or microphone was found on this device.',
+    NotReadableError: 'The camera is busy. Close other apps that use the camera (video calls), then try again.',
+    OverconstrainedError: 'The camera could not give the requested size.',
+    SecurityError: 'The page is not secure (needs https).',
+    AbortError: 'The camera stopped unexpectedly.',
+  };
+  $('camOn').onclick = async () => {
+    if (!device.gum) { $('camStatus').textContent = 'This browser cannot use the camera.'; return; }
+    try {
+      $('camStatus').textContent = 'Asking for permission…';
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      });
+      $('preview').srcObject = stream;
+      const v = stream.getVideoTracks()[0], a = stream.getAudioTracks()[0];
+      const s = v ? v.getSettings() : {};
+      device.camera = `${s.width || '?'}×${s.height || '?'} @${s.frameRate ? Math.round(s.frameRate) : '?'}fps`;
+      device.mic = a ? (a.label || 'yes') : 'none';
+      $('camStatus').innerHTML = `Camera is on · ${esc(device.camera)} · microphone: ${a ? 'on' : '<span class="bad">off</span>'}`;
+      log('Camera on: ' + device.camera + ', mic: ' + device.mic);
+      [v, a].forEach(tr => tr && (tr.onended = () => { log('Track ended: ' + tr.kind + ' (the browser stopped it)'); $('camStatus').textContent = 'The browser turned the ' + (tr.kind === 'video' ? 'camera' : 'microphone') + ' off.'; }));
+      $('camOn').disabled = true; $('camOff').disabled = false; $('recStart').disabled = !device.mr;
+    } catch (e) {
+      const msg = ERR[e.name] || (e.name + ': ' + e.message);
+      $('camStatus').innerHTML = `<span class="bad">${esc(msg)}</span>`;
+      device.cameraError = e.name;
+      log('Camera error: ' + e.name + ' – ' + e.message);
+    }
+  };
+  function stopCamera() { if (stream) stream.getTracks().forEach(t => t.stop()); stream = null; $('preview').srcObject = null; $('camOn').disabled = false; $('camOff').disabled = true; $('recStart').disabled = true; $('camStatus').textContent = 'Camera is off.'; log('Camera off'); }
+  $('camOff').onclick = stopCamera;
+
+  // ---------- recording ----------
+  const fmt = s => String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(Math.floor(s % 60)).padStart(2, '0');
+  function tick() { const now = elapsed + (rec && rec.state === 'recording' ? (Date.now() - startedAt) / 1000 : 0); $('recStatus').textContent = (rec && rec.state === 'paused' ? 'Paused · ' : rec && rec.state === 'recording' ? '● Recording · ' : 'Not recording · ') + fmt(now); return now; }
+  $('recStart').onclick = () => {
+    chunks = []; elapsed = 0;
+    try { rec = chosenType ? new MediaRecorder(stream, { mimeType: chosenType, videoBitsPerSecond: 2500000 }) : new MediaRecorder(stream); }
+    catch (e) { log('Recorder error: ' + e.name + ' – ' + e.message); $('recStatus').textContent = 'Could not start recording: ' + e.message; return; }
+    rec.ondataavailable = e => { if (e.data && e.data.size) { chunks.push(e.data); } };
+    rec.onerror = e => log('Recorder error event: ' + (e.error ? e.error.name : 'unknown'));
+    rec.onpause = () => { elapsed += (Date.now() - startedAt) / 1000; tick(); log('Paused'); };
+    rec.onresume = () => { startedAt = Date.now(); log('Resumed'); };
+    rec.onstop = finish;
+    rec.start(1000);
+    startedAt = Date.now(); timer = setInterval(tick, 250);
+    log('Recording started, type: ' + (rec.mimeType || 'default'));
+    $('recStart').disabled = true; $('recPause').disabled = false; $('recStop').disabled = false; $('recPause').textContent = '❚❚ Pause';
+  };
+  $('recPause').onclick = () => {
+    if (!rec) return;
+    if (rec.state === 'recording') { rec.pause(); $('recPause').textContent = '● Resume'; }
+    else if (rec.state === 'paused') { rec.resume(); $('recPause').textContent = '❚❚ Pause'; }
+  };
+  $('recStop').onclick = () => { if (rec && rec.state !== 'inactive') { if (rec.state === 'recording') elapsed += (Date.now() - startedAt) / 1000; rec.stop(); } };
+  function finish() {
+    clearInterval(timer);
+    const type = rec.mimeType || chosenType || 'video/webm';
+    const blob = new Blob(chunks, { type });
+    if (lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
+    lastBlobUrl = URL.createObjectURL(blob);
+    const pb = $('playback'); pb.src = lastBlobUrl;
+    const ext = type.includes('mp4') ? 'mp4' : 'webm';
+    const a = $('download'); a.href = lastBlobUrl; a.download = 'taleage-test-' + Date.now() + '.' + ext;
+    result = { seconds: Math.round(elapsed), sizeMB: (blob.size / 1048576).toFixed(2), type, chunks: chunks.length, mbPerMin: elapsed ? (blob.size / 1048576 / (elapsed / 60)).toFixed(1) : '?' };
+    const showResult = (dur) => rows($('result'), [
+      ['Length (timer)', fmt(result.seconds)],
+      ['Length the player sees', dur],
+      ['File size', result.sizeMB + ' MB'],
+      ['Size per minute', result.mbPerMin + ' MB'],
+      ['Format', esc(type)],
+      ['Pieces received', String(result.chunks)],
+    ]);
+    showResult('loading…');
+    pb.onloadedmetadata = () => { result.playerDuration = isFinite(pb.duration) ? fmt(pb.duration) : 'unknown (common for webm; fixed on the server)'; showResult(esc(result.playerDuration)); };
+    pb.onerror = () => { result.playbackError = true; showResult('<span class="bad">This browser cannot play the clip</span>'); log('Playback error'); };
+    $('resultCard').hidden = false;
+    $('recStatus').textContent = 'Done · ' + fmt(result.seconds);
+    $('recStart').disabled = !stream; $('recPause').disabled = true; $('recStop').disabled = true;
+    log(`Stopped. ${result.seconds}s, ${result.sizeMB} MB, ${result.chunks} pieces, ${type}`);
+    $('resultCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  $('again').onclick = () => { $('resultCard').hidden = true; $('recStatus').textContent = 'Not recording · 00:00'; window.scrollTo({ top: $('c-h').offsetTop - 10, behavior: 'smooth' }); };
+
+  // ---------- events worth knowing ----------
+  document.addEventListener('visibilitychange', () => log('Page ' + (document.hidden ? 'hidden (switched app / locked)' : 'visible again') + (rec ? ', recorder: ' + rec.state : '')));
+  window.addEventListener('orientationchange', () => log('Rotated'));
+  window.addEventListener('pagehide', () => log('Page closing'));
+
+  // ---------- checklist + copy ----------
+  const CHECKS = [
+    'Camera and microphone permission prompt appeared and worked',
+    'Preview shows my face the right way (like a mirror)',
+    '1-minute recording plays back with picture and sound',
+    'Sound is in sync with the picture',
+    '3-minute recording works and plays back',
+    'Pause and Resume work, and the clip plays back as one',
+    'After switching to another app and back, the camera still works',
+    'Rotating the phone did not break anything',
+    '"Save the clip" saves a file I can open',
+  ];
+  $('checks').innerHTML = CHECKS.map((c, i) => `<label class="check" for="c${i}"><input type="checkbox" id="c${i}"><span>${esc(c)}</span></label>`).join('');
+  $('copy').onclick = async () => {
+    const lines = [
+      'TaleAge recording test — ' + new Date().toLocaleString(),
+      'Browser: ' + device.browser,
+      'Secure: ' + device.secure + ' | Camera API: ' + device.gum + ' | Recorder: ' + device.mr,
+      'Formats: ' + (supported.join(', ') || 'none') + ' | Used: ' + device.chosen,
+      'Camera: ' + (device.camera || (device.cameraError ? 'ERROR ' + device.cameraError : 'not tested')) + ' | Mic: ' + (device.mic || '-'),
+      result ? `Last clip: ${fmt(result.seconds)}, ${result.sizeMB} MB (${result.mbPerMin} MB/min), ${result.type}, player length: ${result.playerDuration || '?'}${result.playbackError ? ', PLAYBACK FAILED' : ''}` : 'Last clip: none',
+      '', 'Checklist:',
+      ...CHECKS.map((c, i) => ($('c' + i).checked ? '[x] ' : '[ ] ') + c),
+      '', 'Notes: ' + ($('notes').value || '-'),
+      '', 'Log:', ...logLines,
+    ];
+    const text = lines.join('\n');
+    try { await navigator.clipboard.writeText(text); $('copyMsg').textContent = 'Copied. Paste it into a note or message.'; }
+    catch (e) { const ta = $('notes'); const old = ta.value; ta.value = text; ta.select(); $('copyMsg').textContent = 'Copy was blocked. The results are selected in the notes box — copy them by hand.'; setTimeout(() => {}, 0); log('Clipboard blocked; old notes: ' + old); }
+  };
+})();
+</script>
+</body>
+</html>
